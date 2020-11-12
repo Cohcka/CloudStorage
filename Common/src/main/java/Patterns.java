@@ -4,10 +4,5 @@ public class Patterns {
     final static byte DOWNLOADFILE = 13;
     final static byte UPLOADFILE = 14;
     final static byte DELETEFILE = 15;
-
-
-
-    private void login(){
-
-    }
+    final static byte GETFILELIST = 16;
 }

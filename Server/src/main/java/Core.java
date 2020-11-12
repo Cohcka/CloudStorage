@@ -48,7 +48,7 @@ public class Core {
     }
 
     private static class AuthHandler extends ChannelInboundHandlerAdapter {
-        private boolean authOk = false;
+        private boolean auth = false;
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
@@ -58,26 +58,34 @@ public class Core {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            ByteBuf in = (ByteBuf) msg;
-            try {
-                while (in.isReadable()) {
-                    System.out.print((char) in.readByte());
+            ByteBuf buf = (ByteBuf) msg;
+            byte codeByte = buf.readByte();
+
+            if (auth) {
+                ctx.fireChannelRead(buf);
+                return;
+            } else if (codeByte == Patterns.LOGINCODE) {
+                int reqLen;
+                reqLen = buf.readInt();
+                byte[] ll = new byte[reqLen];
+                buf.readBytes(ll);
+
+                reqLen = buf.readInt();
+                byte[] pp = new byte[reqLen];
+                buf.readBytes(pp);
+                String login = new String(ll);
+                String password = new String(pp);
+
+                if (loginTmp.equals(login) & passwordTmp.equals(password)){
+                    System.out.println("Ok");
+                    auth = true;
+                    ctx.pipeline().addLast(new MainHandler(login));
+                } else {
+                    System.out.println("Wrong log/pass");
                 }
-            } finally {
-                in.release();
             }
 
-            /*
-            if (authOk) {
-                ctx.fireChannelRead(input);
-                return;
-            }
-            if (input[0] == Patterns.LOGINCODE) {
-                authOk = true;
-                ctx.pipeline().addLast(new MainHandler(login));
-                System.out.println("hi");
-            }
-             */
+
         }
     }
 
@@ -90,23 +98,13 @@ public class Core {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            String input = (String) msg;
-            System.out.println(username + ": " + input);
+            checkCommand((ByteBuf)msg);
         }
     }
 
-    public String[] checkCommand(ByteBuf command) throws UnsupportedEncodingException {
+    public static void checkCommand(ByteBuf command) throws UnsupportedEncodingException {
         byte[] tmp;
-        switch(command.readByte()){
-            case Patterns.LOGINCODE:
-                int loginLen = command.readInt();
-                tmp = new byte[loginLen];
-                command.readBytes(tmp);
-                String login = new String(tmp, "UTF-8");
-                int passLen = command.readInt();
-                tmp = new byte[passLen];
-                command.readBytes(tmp);
-                String password = new String(tmp, "UTF-8");
+        switch(command.readByte()) {
             case Patterns.CHANGEDIR:
                 int pathCDLen = command.readInt();
                 tmp = new byte[pathCDLen];
@@ -140,6 +138,13 @@ public class Core {
                 tmp = new byte[fileDFLen];
                 command.readBytes(tmp);
                 String filenameDF = new String(tmp, "UTF-8");
+            case Patterns.GETFILELIST:
+                int pathFLLen = command.readInt();
+                tmp = new byte[pathFLLen];
+                command.readBytes(tmp);
+                String pathFL = new String(tmp, "UTF-8");
+            default:
+                System.out.println("Wrong command");
         }
     }
 }

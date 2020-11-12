@@ -23,7 +23,7 @@ public class GUI extends JFrame {
         JTextField fldPassword = new JTextField();
         JButton btnLogin = new JButton("Login");
         btnLogin.addActionListener(a -> {
-            core.authSend(fldLogin.getText(),fldPassword.getText());
+            core.sendCommand((byte)10,new String[] {fldLogin.getText(),fldPassword.getText()});
         });
         loginPanel.add(new JLabel("Login:"));
         loginPanel.add(fldLogin);
@@ -42,6 +42,9 @@ public class GUI extends JFrame {
         JButton btnDelete = new JButton("Delete");
         JButton btnRefresh = new JButton("Refresh");
         JButton btnLogOut = new JButton("Logout");
+       // btnNewFolder.addActionListener(a -> {
+       //     core.sendCommand((byte)10, "NewFolder");
+       // });
         toolbarPanel.add(btnBack);
         toolbarPanel.add(btnNext);
         toolbarPanel.add(btnNewFolder);

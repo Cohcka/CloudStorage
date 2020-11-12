@@ -22,13 +22,16 @@ public class Core {
         }
     }
 
-    void authSend(String log, String pass){
-        byte[] msg = (Patterns.LOGINCODE + log.length() + log + pass.length() + pass).getBytes();
+    void sendCommand(Byte code, String[] msg){
+        buf.put(code);
+        for (int i = 0; i < msg.length; i++) {
+            buf.putInt(msg[i].getBytes().length);;
+            buf.put(msg[i].getBytes());
+        }
         try {
-            buf.put(msg);
             buf.flip();
             channel.write(buf);
-            buf.rewind();
+            buf.clear();
         } catch (IOException e) {
             e.printStackTrace();
         }
