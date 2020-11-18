@@ -1,5 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
+import java.nio.file.Paths;
 
 public class GUI extends JFrame {
     Core core;
@@ -19,11 +20,11 @@ public class GUI extends JFrame {
 
     private JPanel createLoginPanel(){
         JPanel loginPanel = new JPanel(new GridLayout(1,5));
-        JTextField fldLogin = new JTextField();
-        JTextField fldPassword = new JTextField();
+        JTextField fldLogin = new JTextField("login"); // tmp
+        JTextField fldPassword = new JTextField("Pass"); // tmp
         JButton btnLogin = new JButton("Login");
         btnLogin.addActionListener(a -> {
-            core.sendCommand((byte)10,new String[] {fldLogin.getText(),fldPassword.getText()});
+            core.auth(fldLogin.getText(),fldPassword.getText());
         });
         loginPanel.add(new JLabel("Login:"));
         loginPanel.add(fldLogin);
@@ -37,19 +38,30 @@ public class GUI extends JFrame {
     private JPanel createToolbarPanel(){
         JPanel toolbarPanel = new JPanel(new GridLayout(1, 6));
         JButton btnBack = new JButton("Back");
-        JButton btnNext = new JButton("Next");
         JButton btnNewFolder = new JButton("New folder");
         JButton btnDelete = new JButton("Delete");
         JButton btnRefresh = new JButton("Refresh");
         JButton btnLogOut = new JButton("Logout");
-       // btnNewFolder.addActionListener(a -> {
-       //     core.sendCommand((byte)10, "NewFolder");
-       // });
+        JButton btnUpload = new JButton("Upload");
+        JButton btnDownload = new JButton("Download");
+        btnDelete.addActionListener(a -> {
+            core.deleteFile("SrvStorage/FileToTransfer.7z");
+        });
+        btnRefresh.addActionListener(a -> {
+            core.updateFileList("SrvStorage");
+        });
+        btnUpload.addActionListener(a -> {
+            core.uploadFile("FileToTransfer.7z");
+        });
+        btnDownload.addActionListener(a -> {
+            core.downloadFile("Hehe.gip");
+        });
         toolbarPanel.add(btnBack);
-        toolbarPanel.add(btnNext);
         toolbarPanel.add(btnNewFolder);
         toolbarPanel.add(btnDelete);
         toolbarPanel.add(btnRefresh);
+        toolbarPanel.add(btnDownload);
+        toolbarPanel.add(btnUpload);
         toolbarPanel.add(btnLogOut);
         return toolbarPanel;
     }

@@ -1,9 +1,7 @@
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.ServerSocket;
-import java.nio.ByteBuffer;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.util.stream.Stream;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
@@ -11,7 +9,6 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.serialization.ObjectDecoder;
 
 public class Core {
     private static String loginTmp = "login";
@@ -76,10 +73,14 @@ public class Core {
                 String login = new String(ll);
                 String password = new String(pp);
 
+                System.out.println(login);
+                System.out.println(password);
+
                 if (loginTmp.equals(login) & passwordTmp.equals(password)){
                     System.out.println("Ok");
                     auth = true;
                     ctx.pipeline().addLast(new MainHandler(login));
+                    ctx.pipeline().remove(this);
                 } else {
                     System.out.println("Wrong log/pass");
                 }
@@ -98,7 +99,8 @@ public class Core {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            checkCommand((ByteBuf)msg);
+            checkCommand((ByteBuf) msg);
+            //ctx.writeAndFlush((byte) 1); // ответное сообщение
         }
     }
 
@@ -110,39 +112,84 @@ public class Core {
                 tmp = new byte[pathCDLen];
                 command.readBytes(tmp);
                 String pathChange = new String(tmp, "UTF-8");
-            case Patterns.DOWNLOADFILE:
+                return;
+            case Patterns.UPLOADFILE:
                 int pathDWFLen = command.readInt();
                 tmp = new byte[pathDWFLen];
                 command.readBytes(tmp);
-                String pathDWF = new String(tmp, "UTF-8");
-                int fileDWFLen = command.readInt();
-                tmp = new byte[fileDWFLen];
-                command.readBytes(tmp);
-                String filenameDWF = new String(tmp, "UTF-8");
-            case Patterns.UPLOADFILE:
+                String fileName = new String(tmp, "UTF-8");
+                if (Files.exists(Paths.get(fileName))) {
+                    System.out.println("File already exists");
+                    while(command.isReadable()){
+                        command.readByte();
+                    }
+                    //отправлять сообщение клиенту чтобы он не продолжал слать файл
+                } else {
+                    try {
+                        Long fileSize = command.readLong();
+                        Long countPack = fileSize/256;
+                        if(fileSize % 256 != 0){countPack++;}
+                        System.out.println("count pack: "+countPack);
+                        Long readPack = 0l;
+                        System.out.println("filesize: "+fileSize);
+                        Files.createFile(Paths.get(fileName));
+                        tmp = new byte[256];
+                        while(readPack<countPack){
+                            //tmp = new byte[fileSize.intValue()];
+                            //command.readBytes(tmp);
+                            //Files.write(Paths.get(fileName),tmp);
+                            if(readPack+1==countPack){
+                                System.out.println("Readpack: "+readPack);
+                                System.out.println("last pack bytes: "+(fileSize-(readPack*256)));
+                                tmp = new byte[(int)(fileSize-(readPack*256))];
+                            }
+                            if(command.readableBytes()>=tmp.length){
+                                command.readBytes(tmp);
+                            }
+                            readPack++;
+                            Files.write(Paths.get(fileName),tmp,StandardOpenOption.APPEND);
+                        }
+                        System.out.println("Upload file: " + fileName+" done");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                return;
+            case Patterns.DOWNLOADFILE:
                 int pathUPFLen = command.readInt();
                 tmp = new byte[pathUPFLen];
                 command.readBytes(tmp);
-                String pathUPF = new String(tmp, "UTF-8");
-                int fileUPLen = command.readInt();
-                tmp = new byte[fileUPLen];
-                command.readBytes(tmp);
-                String filenameUP = new String(tmp, "UTF-8");
+                String pathDWF = new String(tmp, "UTF-8");
                 //передача байтов самого файла
+                return;
             case Patterns.DELETEFILE:
                 int pathDFLen = command.readInt();
                 tmp = new byte[pathDFLen];
                 command.readBytes(tmp);
                 String pathDF = new String(tmp, "UTF-8");
-                int fileDFLen = command.readInt();
-                tmp = new byte[fileDFLen];
-                command.readBytes(tmp);
-                String filenameDF = new String(tmp, "UTF-8");
+                try {
+                    Files.delete(Paths.get(pathDF));
+                    System.out.println("File: " + pathDF +" deleted ");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return;
             case Patterns.GETFILELIST:
                 int pathFLLen = command.readInt();
                 tmp = new byte[pathFLLen];
                 command.readBytes(tmp);
                 String pathFL = new String(tmp, "UTF-8");
+                try {
+                Stream<Path> dir = Files.list(Paths.get(pathFL));
+                Object[] dir2 = dir.toArray();
+                    for (Object obj : dir2) {
+                        System.out.println(obj.toString().replace(root+"/",""));
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return;
             default:
                 System.out.println("Wrong command");
         }
