@@ -105,6 +105,11 @@ public class Core {
     }
 
     public static void checkCommand(ByteBuf command) throws UnsupportedEncodingException {
+        // test
+        while (command.isReadable()) {
+            System.out.print((char) command.readByte());
+        }
+        // test ^
         byte[] tmp;
         switch(command.readByte()) {
             case Patterns.CHANGEDIR:
@@ -118,6 +123,7 @@ public class Core {
                 tmp = new byte[pathDWFLen];
                 command.readBytes(tmp);
                 String fileName = new String(tmp, "UTF-8");
+                System.out.println(command.readableBytes());
                 if (Files.exists(Paths.get(fileName))) {
                     System.out.println("File already exists");
                     while(command.isReadable()){

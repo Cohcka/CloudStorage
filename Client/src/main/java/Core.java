@@ -78,7 +78,7 @@ public class Core {
             //channel.write(buf);
 
             while(sendPack<countPack){
-                buf.flip();
+                buf.clear();
                 System.out.println("Sendpack: "+sendPack);
                 if(sendPack+1==countPack){
                     System.out.println("last pack bytes: "+(fileSize-(sendPack*256)));
@@ -89,8 +89,7 @@ public class Core {
                 channel.write(buf);
                 sendPack++;
             }
-            buf = ByteBuffer.allocate(256);
-            buf.clear();
+            //buf = ByteBuffer.allocate(256);
         } catch (IOException e) {
             e.printStackTrace();
         }
