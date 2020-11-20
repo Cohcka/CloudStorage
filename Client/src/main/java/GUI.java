@@ -45,13 +45,14 @@ public class GUI extends JFrame {
         JButton btnUpload = new JButton("Upload");
         JButton btnDownload = new JButton("Download");
         btnDelete.addActionListener(a -> {
-            core.deleteFile("SrvStorage/FileToTransfer.7z");
+            core.deleteFile("SrvStorage/FileToTransfer.txt");
         });
         btnRefresh.addActionListener(a -> {
             core.updateFileList("SrvStorage");
         });
         btnUpload.addActionListener(a -> {
-            core.uploadFile("FileToTransfer.7z");
+            core.uploadFile("FileToTransfer.txt");
+            //core.uploadFile("TK.bak");
         });
         btnDownload.addActionListener(a -> {
             core.downloadFile("Hehe.gip");

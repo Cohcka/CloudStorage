@@ -14,7 +14,7 @@ import java.nio.file.Paths;
 
 public class Core {
     private SocketChannel channel;
-    private ByteBuffer buf = ByteBuffer.allocate(256);
+    private ByteBuffer buf = ByteBuffer.allocate(Patterns.BYTESIZE);
     private final Path clientRoot = Paths.get("ClientStorage");
     private final Path serverRoot = Paths.get("SrvStorage"); // заменить
     //private Path clientPath;
@@ -67,10 +67,10 @@ public class Core {
             buf.flip();
             channel.write(buf);
             System.out.println("Client start transfer file");
-            Long countPack = fileSize/256;
-            if(fileSize % 256 != 0){countPack++;}
+            long countPack = fileSize/Patterns.BYTESIZE;
+            if(countPack==0 || fileSize % Patterns.BYTESIZE != 0){countPack++;}
             System.out.println("count pack: "+countPack);
-            Long sendPack = 0l;
+            long sendPack = 0l;
             System.out.println("filesize: "+fileSize);
 
             //buf.put("TransFerMan".getBytes());
@@ -79,16 +79,18 @@ public class Core {
 
             while(sendPack<countPack){
                 buf.clear();
-                System.out.println("Sendpack: "+sendPack);
+                System.out.println("Sendpack: "+sendPack+" / "+countPack);
+                System.out.println(sendPack/(double) (countPack/100)+" %");
                 if(sendPack+1==countPack){
-                    System.out.println("last pack bytes: "+(fileSize-(sendPack*256)));
-                    buf = ByteBuffer.allocate((int)(fileSize-(sendPack*256)));
+                    System.out.println("last pack bytes: "+(fileSize-(sendPack*Patterns.BYTESIZE)));
+                    buf = ByteBuffer.allocate((int)(fileSize-(sendPack*Patterns.BYTESIZE)));
                 }
                 fl.read(buf);
                 buf.flip();
                 channel.write(buf);
                 sendPack++;
             }
+            buf.clear();
             //buf = ByteBuffer.allocate(256);
         } catch (IOException e) {
             e.printStackTrace();
