@@ -1,5 +1,6 @@
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.BufferedReader;
+import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.file.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -7,6 +8,7 @@ import java.util.stream.Stream;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -97,12 +99,12 @@ public class Core {
         private ExecutorService executorService;
         private int state = 0;
 
+        private ByteBuf buf = ByteBufAllocator.DEFAULT.buffer(Patterns.BYTESIZE);
         byte[] tmp;
         //File
         private String fileName;
         private Long fileSize;
         private Long countPack;
-        private Long readPack;
         private Long readBytes = 0l;
 
 
@@ -113,12 +115,12 @@ public class Core {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            checkCommand((ByteBuf) msg);
+            checkCommand(ctx, (ByteBuf) msg);
             //ctx.writeAndFlush((byte) 1); // ответное сообщение
         }
 
 
-        public void checkCommand(ByteBuf command) throws Exception {
+        public void checkCommand(ChannelHandlerContext ctx, ByteBuf command) throws Exception {
             System.out.println("r1 "+command.readableBytes());
             executorService.execute(()->{
             while(command.isReadable()) {
@@ -130,7 +132,6 @@ public class Core {
                                 tmp = new byte[pathCDLen];
                                 command.readBytes(tmp);
                                 String pathChange = new String(tmp, "UTF-8");
-                                command.release();
                                 return;
                             case Patterns.UPLOADFILE:
                                 int pathDWFLen = command.readInt();
@@ -147,21 +148,24 @@ public class Core {
                                         countPack++;
                                     }
                                     System.out.println("count pack: " + countPack);
-                                    Long readPack = 0l;
                                     System.out.println("filesize: " + fileSize);
                                     Files.createFile(Paths.get(fileName));
                                     readBytes = 0l;
                                     state = 1;
                                 }
-                                command.release();
                                 return;
                             case Patterns.DOWNLOADFILE:
                                 int pathUPFLen = command.readInt();
                                 tmp = new byte[pathUPFLen];
                                 command.readBytes(tmp);
-                                String pathDWF = new String(tmp, "UTF-8");
-                                //передача байтов самого файла
                                 command.release();
+                                String pathDWF = new String(tmp, "UTF-8");
+                                fileSize = Files.size(Paths.get(pathDWF));
+                                buf.clear();
+                                buf.writeLong(fileSize);
+                                buf.writeBytes(Files.readAllBytes(Paths.get(pathDWF)));
+                                ctx.writeAndFlush(buf);
+
                                 return;
                             case Patterns.DELETEFILE:
                                 int pathDFLen = command.readInt();
@@ -174,7 +178,6 @@ public class Core {
                                     Files.delete(Paths.get(pathDF));
                                     System.out.println("File: " + pathDF + " deleted ");
                                 }
-                                command.release();
                                 return;
                             case Patterns.GETFILELIST:
                                 int pathFLLen = command.readInt();
@@ -186,33 +189,17 @@ public class Core {
                                 for (Object obj : dir2) {
                                     System.out.println(obj.toString().replace(root + "/", ""));
                                 }
-                                command.release();
                                 return;
                             default:
                                 System.out.println("Wrong command");
-                                command.release();
                         }
+                        command.clear();
+                        command.release();
                     } else if (state == 1) {
                         System.out.println("input bytes "+command.readableBytes());
                         System.out.println(readBytes+"/"+fileSize);
                         System.out.println(readBytes/(fileSize/100) + " %");
-//                        tmp = new byte[256];
-//                        while (readPack < countPack) {
-//                            if (readPack + 1 == countPack) {
-//                                System.out.println("Readpack: " + readPack);
-//                                System.out.println("last pack bytes: " + (fileSize - (readPack * 256)));
-//                                tmp = new byte[(int) (fileSize - (readPack * 256))];
-//                            }
-//                            command.readBytes(tmp);
-//                            readPack++;
-//                            Files.write(Paths.get(fileName), tmp, StandardOpenOption.APPEND);
-//                        }
-//                        if (readPack == countPack) {
-//                            state = 0;
-//                            System.out.println("Upload file: " + fileName + " done");
-//                        }
-
-                         if (readBytes<fileSize){
+                        if (readBytes<fileSize){
                             if(readBytes+command.readableBytes()<=fileSize){
                                 tmp = new byte[command.readableBytes()];
                             }else{
@@ -226,6 +213,7 @@ public class Core {
                             state = 0;
                             System.out.println("Upload file: " + fileName + " done");
                         }
+                        command.clear();
                         command.release();
                     }
                 } catch (Exception e) {

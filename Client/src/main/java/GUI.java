@@ -1,6 +1,5 @@
 import javax.swing.*;
 import java.awt.*;
-import java.nio.file.Paths;
 
 public class GUI extends JFrame {
     Core core;
@@ -52,10 +51,9 @@ public class GUI extends JFrame {
         });
         btnUpload.addActionListener(a -> {
             core.uploadFile("FileToTransfer.txt");
-            //core.uploadFile("TK.bak");
         });
         btnDownload.addActionListener(a -> {
-            core.downloadFile("Hehe.gip");
+            core.downloadFile("Hehe.glp");
         });
         toolbarPanel.add(btnBack);
         toolbarPanel.add(btnNewFolder);
